@@ -8,6 +8,7 @@ CREATE TABLE mart.d_calendar(
 );
 CREATE INDEX d_calendar1  ON mart.d_calendar (year_num);
 
+DROP TABLE IF EXISTS mart.d_item CASCADE;
 CREATE TABLE mart.d_item (
    id serial4 NOT NULL,
    item_id int4 NOT NULL,

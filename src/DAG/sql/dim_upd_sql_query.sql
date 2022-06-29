@@ -32,14 +32,14 @@ FROM staging.user_orders_log
 where customer_id not in (select distinct customer_id from mart.d_customer)
 ;
 
-INSERT INTO mart.d_calendar (date_id, day_num, month_num, month_name, year_num)
+INSERT INTO mart.d_calendar (date_time, day_num, month_num, month_name, year_num)
 SELECT DISTINCT date_time,
 EXTRACT (DAY FROM date_time),
 EXTRACT (MONTH FROM date_time),
 TO_CHAR(date_time, 'month'),
 EXTRACT (YEAR FROM date_time)
 FROM staging.user_orders_log st
-WHERE st.date_time NOT IN (select distinct date_id from mart.d_calendar)
+WHERE st.date_time NOT IN (select distinct date_time from mart.d_calendar)
 ;
 
 insert into mart.d_city (city_id, city_name)

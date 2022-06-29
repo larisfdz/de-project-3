@@ -1,14 +1,14 @@
 delete from mart.f_daily_sales
-where date_id in (select distinct date_time::date from staging.user_orders_log);
+where date_time in (select distinct date_time::date from staging.user_orders_log);
 insert into mart.f_daily_sales
-(date_id,
+(date_time,
 item_id,
 customer_id,
 price,
 quantity,
 payment_amount, 
 status)
-select distinct date_time::date as date_id, 
+select distinct date_time::date as date_time, 
 item_id, 
 customer_id, 
 CASE WHEN status = 'refunded' AND payment_amount > 0 

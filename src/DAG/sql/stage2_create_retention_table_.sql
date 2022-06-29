@@ -1,4 +1,4 @@
-DROP VIEW mart.f_customer_retention;
+--DROP VIEW mart.f_customer_retention;
 CREATE TABLE  mart.f_customer_retention (
 id SERIAL PRIMARY KEY,
 period_name VARCHAR(20),

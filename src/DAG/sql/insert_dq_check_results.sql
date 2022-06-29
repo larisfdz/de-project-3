@@ -1,1 +1,0 @@
-INSERT INTO staging.dq_checks_results values {{ params.val }}

@@ -1,1 +1,0 @@
-TRUNCATE {{ params.table }} RESTART IDENTITY;

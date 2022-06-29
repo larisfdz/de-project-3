@@ -4,7 +4,7 @@ FROM
 WHERE
 	period_id IN (
 	SELECT
-		DISTINCT date_part('year'::TEXT, date_id)::TEXT || date_part('week'::TEXT, date_id)::TEXT
+		DISTINCT date_part('year'::TEXT, date_time)::TEXT || date_part('week'::TEXT, date_time)::TEXT
 	FROM
 		mart.f_daily_sales);
 
@@ -14,6 +14,7 @@ INSERT
 period_name,
 	period_id,
 	category_name,
+	cohort,
 	new_customers_count,
 	returning_customers_count,
 	refunded_customers_count,
@@ -22,52 +23,51 @@ period_name,
 	refunded_customers_sum,
 	customers_refunded)
 
-WITH ct AS (
-	SELECT
-		a.period_id,
-		a.customer_id,
-		CASE
-			WHEN a.n_buys = 1 THEN 'new'::TEXT
-			ELSE 'returning'::TEXT
-		END AS customer_type
-	FROM
-		(
-		SELECT
-			DISTINCT date_part('year'::TEXT, fds.date_id)::TEXT || date_part('week'::TEXT, fds.date_id)::TEXT AS period_id,
-			fds.customer_id,
-			count(*) AS n_buys
+WITH cust AS (
+		--getting the first buy week
+SELECT customer_id,
+			date_time,
+			ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY date_time ASC) AS first_buy,
+			EXTRACT(YEAR FROM date_time) :: TEXT || EXTRACT(week FROM date_time) :: TEXT AS period_id
 		FROM
-			mart.f_daily_sales fds
-		WHERE
-			fds.status = 'shipped'::TEXT
-		GROUP BY
-			(date_part('year'::TEXT, fds.date_id)::TEXT || date_part('week'::TEXT, fds.date_id)::TEXT),
-			fds.customer_id) a
-        ),
-	totals AS (
-	SELECT
-		DISTINCT date_part('year'::TEXT, fds.date_id)::TEXT || date_part('week'::TEXT, fds.date_id)::TEXT AS period_id,
-		fds.date_id,
+			mart.f_daily_sales
+		WHERE status != 'refunded'
+		),
+totals AS (
+--определяем тип покупателя новый / вернувшийся и когорту
+SELECT
+	DISTINCT date_part('year'::TEXT, fds.date_time)::TEXT || date_part('week'::TEXT, fds.date_time)::TEXT AS period_id,
+		fds.date_time,
 		fds.customer_id,
-		ct.customer_type,
 		di.category_name,
 		fds.item_id,
 		fds.payment_amount,
-		fds.status
-	FROM
-		mart.f_daily_sales fds
-	LEFT JOIN mart.d_item di ON
-		fds.item_id = di.item_id
-	LEFT JOIN ct ON
-		fds.customer_id = ct.customer_id
-		AND (date_part('year'::TEXT, fds.date_id)::TEXT || date_part('week'::TEXT, fds.date_id)::TEXT) = ct.period_id
-        ),
-	grouped AS (
+		fds.status,
+		fb.cohort,
+	CASE
+		WHEN fb.cohort = (date_part('year'::TEXT, fds.date_time)::TEXT || date_part('week'::TEXT, fds.date_time)::TEXT)
+		 THEN 'new'
+		ELSE 'returning'
+	END AS customer_type
+FROM
+	mart.f_daily_sales fds
+LEFT JOIN mart.d_item di ON
+		fds.item_id = di.item_id	
+LEFT JOIN 
+(SELECT customer_id,
+		period_id AS cohort
+		FROM cust
+		WHERE cust.first_buy = 1
+) AS fb
+ON fds.customer_id = fb.customer_id
+),
+grouped AS (
 	SELECT
 		totals.period_id,
 		totals.customer_type,
 		totals.status,
 		totals.category_name,
+		totals.cohort,
 		count(DISTINCT totals.customer_id) AS n_customers,
 		sum(totals.payment_amount) AS payment_amount,
 		count(*) AS n_transactions
@@ -77,13 +77,15 @@ WITH ct AS (
 		totals.period_id,
 		totals.customer_type,
 		totals.status,
-		totals.category_name
+		totals.category_name, 
+		totals.cohort
         ),
 	almost AS (
 	SELECT
 		'weekly'::TEXT AS period_name,
 		grouped.period_id,
 		grouped.category_name,
+		grouped.cohort,
 		CASE
 			WHEN grouped.status = 'shipped'::TEXT
 				AND grouped.customer_type = 'new'::TEXT THEN grouped.n_customers
@@ -141,6 +143,7 @@ WITH ct AS (
 	almost.period_name,
 	almost.period_id,
 	almost.category_name,
+	almost.cohort,
 	sum(almost.new_customers_count) AS new_customers_count,
 	sum(almost.returning_customers_count) AS returning_customers_count,
 	sum(almost.refunded_customers_count) AS refunded_customers_count,
@@ -153,4 +156,5 @@ FROM
 GROUP BY
 	almost.period_name,
 	almost.period_id,
-	almost.category_name;
+	almost.category_name,
+	almost.cohort;

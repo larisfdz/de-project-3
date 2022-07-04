@@ -1,19 +1,18 @@
-**Проект по созданию и ежедневному наполнению двух схем базы данных: staging и mart.**
+**The project is aimed to create and fullfill two database schemes, staging and mart.**
 
 **dag_migration.py**
-- Создает две схемы в базе данных, staging и mart. Сюда же включила добавление поля status и таблицу  customer_retention.
-- Заполняет их историческими данными.
+- Creates two schemes, staging and mart.  
+- Updates staging.customer_orders_log table to add status field.  
+- Creates a customer_retention data mart.
+- Uploads historical data.
 
 
 **etl_update_user_data_project.py**
-- берет файлы инкрементов по вчерашней дате,
-- если это дата уже есть в бд - удаляет соответствующие строки,
-- заполняет таблицы staging данными за вчерашний день,
-- проверяет, что данные за вчерашний день появились,
-- обновляет таблицы mart,
-NB: catchup=True, чтобы добавить даты между историческим отчетом и вчерашним днем.
+- Gets yesterday's increment files.  
+- Deletes the rows corresponding to the date if the above mentioned date already exists.    
+- Ulploads staging scheme tables with the data from yesterday.  
+- Checks the rows were added.  
+- Updates mart dimention and facts tables.
 
-**Для запуска дагов** необходимо, чтобы в той же папке находилась папка sql.
-Сначала необходимо запустить dag_migration.py, затем etl_update_user_data_project.py
 
 
